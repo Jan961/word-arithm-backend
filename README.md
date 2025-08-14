@@ -96,3 +96,10 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+
+## Miscellaneous:
+
+- To set up SSH tunnel connection to an EC2 DB use localhost 
+for "host" on the DB connection and the aws ec2 instance as host in  
+the SSH tunnel connection.
