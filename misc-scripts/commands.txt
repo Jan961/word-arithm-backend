@@ -1,0 +1,1 @@
+ssh -N -L 5433:localhost:5432 ec2-user@ec2-18-130-253-148.eu-west-2.compute.amazonaws.com -i "C:\Users\Asus\.ssh\AWS\SecondTestWordArithmKeyPair.pem"
