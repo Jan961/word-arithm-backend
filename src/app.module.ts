@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { WordsModule } from './words/words.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { EmbeddingsModule } from './embeddings/embeddings.module';
 import 'dotenv/config';
 
 @Module({
   imports: [
-    WordsModule,
+    EmbeddingsModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: '127.0.0.1',
