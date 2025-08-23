@@ -21,6 +21,8 @@ export class AppService {
    *   - metric: must match your index opclass ('l2' | 'cosine' | 'ip')
    *   - includeDistance: include distance column in the output
    */
+
+  // TODO: add other distances
   async getVectorAdditionResults(
     addWords: string[],
     subWords: string[],
@@ -74,6 +76,45 @@ export class AppService {
     // $1 = text[], $2 = int
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const rows = await this.db.query(sql, [addWords, subWords, n]);
+    return rows as Row[];
+  }
+
+  // TODO: add other distances
+  async getNearestNeighbors(
+    word: string,
+    n: number,
+    opts: { metric?: Metric; includeDistance?: boolean } = {},
+  ): Promise<Row[]> {
+    const metric = opts.metric ?? 'cosine';
+    const op = ({ l2: '<->', cosine: '<=>', ip: '<#>' } as const)[metric];
+
+    const excludeArr = [
+      `'%${word}%'`,
+      `'%${word.charAt(0).toUpperCase() + word.slice(1)}%'`,
+    ];
+
+    const sql = `
+        WITH q AS (
+            SELECT embedding AS qvec
+            FROM word_embeddings
+            WHERE word = $1
+        )
+        SELECT w.word,
+               w.embedding <=> (SELECT qvec FROM q) AS cosine_distance,
+               1 - (w.embedding <=> (SELECT qvec FROM q)) AS cosine_similarity
+        FROM word_embeddings AS w
+        WHERE w.word <> $1
+          AND EXISTS (SELECT 1 FROM q)
+            AND w.word NOT LIKE ALL (ARRAY[${excludeArr.join(',')}])
+        ORDER BY w.embedding <=> (SELECT qvec FROM q)
+        LIMIT $2;
+    `;
+
+    console.log('SQL Query:', sql);
+
+    // $1 = text, $2 = int
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const rows = await this.db.query(sql, [word, n]);
     return rows as Row[];
   }
 }

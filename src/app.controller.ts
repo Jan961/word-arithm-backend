@@ -24,6 +24,16 @@ export class AppController {
     return Array.from(embedding);
   }
 
+  @Get('neighbours/:word')
+  async getNearestNeighbors(
+    @Param('word') word: string,
+    @Query('n', new DefaultValuePipe(10), ParseIntPipe) n: number,
+  ) {
+    return this.appService.getNearestNeighbors(word, n, {
+      includeDistance: true,
+    });
+  }
+
   @Get('results')
   getResult(
     // Array of strings: accepts repeated keys (?tags=a&tags=b) and comma-separated (?tags=a,b)
