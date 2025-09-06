@@ -6,6 +6,7 @@ import {
   Query,
   ParseIntPipe,
   DefaultValuePipe,
+  ParseBoolPipe,
 } from '@nestjs/common';
 import { AppService } from './app.service';
 import { EmbeddingsRepo } from './embeddings/embeddings.repo';
@@ -33,6 +34,31 @@ export class AppController {
       includeDistance: true,
     });
   }
+  // Get the distances from the word passed as parameter to the words passed as query parameters
+  @Get('distances/:word')
+  getDistances(
+    @Param('word') word: string,
+    @Query(
+      'words',
+      new ParseArrayPipe({ items: String, separator: ',', optional: false }),
+    )
+    words: string[],
+    @Query('metric', new DefaultValuePipe('cosine'))
+    metric: 'cosine' | 'l2' | 'ip',
+    @Query('similarity', new DefaultValuePipe(true), ParseBoolPipe)
+    similarity: boolean,
+    @Query('excludeSelf', new DefaultValuePipe(true), ParseBoolPipe)
+    excludeSelf: boolean,
+  ) {
+    return this.appService.getDistancesToWords(word, words, {
+      metric,
+      asSimilarity: similarity,
+      excludeSelf,
+    });
+  }
+
+
+
 
   @Get('results')
   getResult(

@@ -33,7 +33,7 @@ export class AppService {
       includeDistance?: boolean;
     } = {},
   ): Promise<Row[]> {
-    const metric = opts.metric ?? 'l2';
+    const metric = opts.metric ?? 'cosine';
     const op = ({ l2: '<->', cosine: '<=>', ip: '<#>' } as const)[metric];
 
     const selectDistance = opts.includeDistance
@@ -117,4 +117,61 @@ export class AppService {
     const rows = await this.db.query(sql, [word, n]);
     return rows as Row[];
   }
+
+  /**
+   * Compute distances from a query word to a provided list of words.
+   * Default returns cosine similarity; other metrics return their native distance.
+   */
+  async getDistancesToWords(
+    queryWord: string,
+    targetWords: string[],
+    opts: { metric?: Metric; asSimilarity?: boolean; excludeSelf?: boolean } = {},
+  ): Promise<Row[]> {
+    if (!Array.isArray(targetWords) || targetWords.length === 0) {
+      return [];
+    }
+
+    // Deduplicate inputs to minimize index lookups; preserve first-seen order
+    const uniqueTargetWords = Array.from(new Set(targetWords));
+    if (uniqueTargetWords.length === 0) {
+      return [];
+    }
+
+    const metric = opts.metric ?? 'cosine';
+    const op = ({ l2: '<->', cosine: '<=>', ip: '<#>' } as const)[metric];
+    const isCosine = metric === 'cosine';
+    const asSimilarity = opts.asSimilarity ?? isCosine; // default to cosine similarity
+
+    const measureExpr = asSimilarity && isCosine
+      ? `1 - (w.embedding <=> q.qvec)`
+      : `w.embedding ${op} q.qvec`;
+
+    const sql = `
+        WITH q AS (
+            SELECT embedding AS qvec
+            FROM word_embeddings
+            WHERE word = $1
+        )
+        SELECT t.word AS word,
+               ${measureExpr} AS distance
+        FROM q
+        JOIN unnest($2::text[]) WITH ORDINALITY AS t(word, ord) ON true
+        JOIN word_embeddings AS w
+          ON w.word = t.word
+        ${opts.excludeSelf ? 'WHERE t.word <> $1' : ''}
+        ORDER BY t.ord;
+    `;
+
+    console.log('SQL Query:', sql);
+
+    // $1 = text, $2 = text[]
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const rows = await this.db.query(sql, [queryWord, uniqueTargetWords]);
+    return rows as Row[];
+  }
+
+
+
+
+  
 }
